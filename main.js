@@ -34,7 +34,8 @@ function show() {
 }
 
 const sameApp = (url) => { try { return new URL(url).origin === ORIGIN; } catch { return false; } };
-const openOutside = (url) => { if (/^https?:\/\//i.test(url)) shell.openExternal(url); };
+// Web links open in the browser; phone numbers open Windows' calling app (Phone Link).
+const openOutside = (url) => { if (/^https?:\/\//i.test(url) || /^tel:\+?[1-9]\d{7,14}$/.test(url)) shell.openExternal(url); };
 
 function createWindow() {
   const b = loadBounds();
