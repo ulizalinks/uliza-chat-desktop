@@ -1,28 +1,33 @@
 {
   "name": "uliza-chat-desktop",
   "productName": "Uliza Chat",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "Uliza Events staff WhatsApp chat for Windows",
   "author": "Uliza Events",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win --publish never"
+    "dist": "electron-builder --win --publish never",
+    "test": "node --test navigation.test.js",
+    "test:windows": "node windows-smoke.js"
   },
   "dependencies": {
     "electron-updater": "^6.6.2"
   },
   "devDependencies": {
     "electron": "^38.2.0",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.0.12",
+    "playwright": "^1.58.2"
   },
   "build": {
+    "afterAllArtifactBuild": "./verify-release.js",
     "appId": "com.ulizaevents.chat",
     "productName": "Uliza Chat",
     "copyright": "Uliza Events",
     "files": [
       "main.js",
+      "navigation.js",
       "package.json",
       "build/icon.png"
     ],

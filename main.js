@@ -3,6 +3,7 @@
 const { app, BrowserWindow, Menu, Tray, nativeImage, shell, session } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
+const { isWorkspaceUrl, canUsePermission } = require('./navigation');
 
 const APP_URL = process.env.ULIZA_CHAT_URL || 'https://ulizatickets.com/admin/whatsapp-chat';
 const ORIGIN = new URL(APP_URL).origin;
@@ -33,7 +34,7 @@ function show() {
   win.focus();
 }
 
-const sameApp = (url) => { try { return new URL(url).origin === ORIGIN; } catch { return false; } };
+const sameApp = (url) => isWorkspaceUrl(url, ORIGIN);
 // Web links open in the browser; phone numbers open Windows' calling app (Phone Link).
 const openOutside = (url) => { if (/^https?:\/\//i.test(url) || /^tel:\+?[1-9]\d{7,14}$/.test(url)) shell.openExternal(url); };
 
@@ -57,12 +58,15 @@ function createWindow() {
 
   // Links to other sites open in the normal browser; the window stays on Uliza.
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (sameApp(url)) return { action: 'allow' };
+    if (sameApp(url)) { win.loadURL(url); return { action: 'deny' }; }
     openOutside(url);
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', (e, url) => {
     if (!sameApp(url)) { e.preventDefault(); openOutside(url); }
+  });
+  win.webContents.on('will-redirect', (e, url) => {
+    if (!sameApp(url)) { e.preventDefault(); win.loadURL(APP_URL); }
   });
 
   // "(3) WhatsApp chats - Admin" → flash the taskbar button for new unread chats.
@@ -106,16 +110,16 @@ function createTray() {
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   // Microphone (voice calls), notifications and copy are allowed only for Uliza pages.
-  const allowed = new Set(['media', 'notifications', 'clipboard-sanitized-write', 'fullscreen']);
   session.defaultSession.setPermissionRequestHandler((wc, permission, cb, details) => {
-    cb(allowed.has(permission) && sameApp(details.requestingUrl || wc.getURL()) && (permission !== 'media' || !(details.mediaTypes || []).includes('video')));
+    cb(canUsePermission(details.requestingUrl || wc.getURL(), wc.getURL(), permission, ORIGIN, details.mediaTypes || []));
   });
-  session.defaultSession.setPermissionCheckHandler((wc, permission, origin) => allowed.has(permission) && sameApp(origin));
+  session.defaultSession.setPermissionCheckHandler((wc, permission, origin, details) =>
+    !!wc && canUsePermission(origin, wc.getURL(), permission, ORIGIN, details?.mediaTypes || []));
 
   createTray();
   createWindow();
 
-  if (app.isPackaged) {
+  if (app.isPackaged && !process.env.ULIZA_CHAT_URL) {
     try {
       const { autoUpdater } = require('electron-updater');
       autoUpdater.checkForUpdatesAndNotify().catch(() => {});
