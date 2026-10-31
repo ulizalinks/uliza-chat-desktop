@@ -20,13 +20,13 @@ const assert = require('node:assert/strict');
       env: { ...process.env, ULIZA_CHAT_URL: origin + '/admin/whatsapp-chat' }, timeout: 60000 });
     const page = await app.firstWindow();
     await page.waitForURL(origin + '/admin/whatsapp-chat');
-    assert.match(await page.evaluate(() => navigator.userAgent), /UlizaChatDesktop\/1\.0\.2/);
+    assert.ok((await page.evaluate(() => navigator.userAgent)).includes(`UlizaChatDesktop/${require('./package.json').version}`));
     const prefs = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences());
     assert.equal(prefs.contextIsolation, true);
     assert.equal(prefs.sandbox, true);
     assert.equal(prefs.nodeIntegration, false);
     await page.evaluate(() => { location.href = '/login?redirect=/admin/whatsapp-chat'; });
-    await page.waitForURL('**/login?*');
+    await page.waitForURL(url => url.pathname === '/login');
     await page.evaluate(() => { location.href = '/admin/whatsapp-chat?view=crm'; });
     await page.waitForURL(origin + '/admin/whatsapp-chat?view=crm');
     // Main-admin navigation must not replace the workspace window.
